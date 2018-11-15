@@ -19,7 +19,7 @@ PulpWebpackPlugin.prototype.apply = function (compiler) {
           commands.push(this.options[key]);
         }
       });
-      ['optimise', 'source-maps'].forEach((key) => {
+      ['no-check-main', 'optimise', 'source-maps'].forEach((key) => {
         if (key in this.options) {
           if (this.options[key]) {
             commands.push('--' + key)
