@@ -78,3 +78,18 @@ var PulpWebpackPlugin = require('pulp-webpack-plugin');
   ]
 ```
 
+### no-watch
+
+```
+  plugins: [
+    new PulpWebpackPlugin({
+      'no-watch': true
+      'build': 'browserify',
+      'main': 'Main',
+      'src-path': 'src',
+      'to': 'public/app.js'
+    })
+  ]
+```
+
+This case pulp does not watch for `webpack -w`.

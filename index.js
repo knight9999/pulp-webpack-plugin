@@ -10,6 +10,10 @@ let watchProcess = null;
 PulpWebpackPlugin.prototype.apply = function (compiler) {
   compiler.hooks.watchRun.tapPromise('PulpWebpackPluginHooks',  (source, target, routesList) => {
     if (compiler.watchMode && watchProcess == null) {
+      if (this.options['no-watch']) {
+        console.log("skipping pulp watch ----------");
+        return Promise.resolve();
+      }
       return execPulp(this.options, false).then(() => {
         console.log("pulp watch start----------");
         execPulp(this.options, true).then(() => {
