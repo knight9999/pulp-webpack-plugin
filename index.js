@@ -5,42 +5,87 @@ function PulpWebpackPlugin(options) {
   this.options = options;
 }
 
+let watchProcess = null;
+
 PulpWebpackPlugin.prototype.apply = function (compiler) {
+  compiler.hooks.watchRun.tapPromise('PulpWebpackPluginHooks',  (source, target, routesList) => {
+    if (compiler.watchMode && watchProcess == null) {
+      return execPulp(this.options, false).then(() => {
+        console.log("pulp watch start----------");
+        execPulp(this.options, true).then(() => {
+          watchProcess = null;
+        }, (err) => { 
+          console.error(err);
+          watchProcess = null;
+          process.exit(1);
+        });
+        return Promise.resolve();
+      });
+    }
+    return Promise.resolve();
+  });
   compiler.hooks.beforeRun.tapPromise('PulpWebpackPluginHooks',  (source, target, routesList) => {
-    return new Promise(resolve => {
-      let pulp = 'pulp';
-      let build = 'build'; // build or browserify
-      if (this.options.pulp) {
-        pulp = this.options.pulp;
-      }
-      if (this.options.build) {
-        build = this.options.build;
-      }
-      let commands = [build];
-      ['build-path', 'dependency-path', 'include', 'main', 'modules', 'to', 'src-path', 'test-path', 'standalone'].forEach((key) => {
-        if (key in this.options) {
-          commands.push('--' + key);
-          commands.push(this.options[key]);
-        }
-      });
-      ['no-check-main', 'optimise', 'source-maps', 'skip-entry-point'].forEach((key) => {
-        if (key in this.options) {
-          if (this.options[key]) {
-            commands.push('--' + key)
-          }
-        }
-      });
-      // console.log(commands);
-      childProcess.execFile(pulp, commands, (error, stdout, stderr) => {
-        if (error) {
-          console.error("stderr", stderr);
-          throw error;
-        }
-        console.log(stdout);
+    console.log("beforeRun----------");
+    return execPulp(this.options, false);
+  });
+
+  const execPulp = function (options, isWatch) {
+    return new Promise((resolve, reject) => {
+      const pulp = getPulp(options);
+      const commands = isWatch ? ['--watch'].concat(getCommands(options)) : getCommands(options);
+      let proc = childProcess.spawn(pulp, commands);
+      proc.on('exit', function (code) {
+        console.log('pulp finished.');
         resolve();
       });
+      proc.on('error', function (err) {
+        console.error(err);
+        reject(err);
+      });
+      proc.stdout.on('data', (data) => {
+        console.log(data.toString());
+      });
+      proc.stderr.on('data', (data) => {
+        console.error(data.toString());
+      });
+      if (isWatch) {
+        watchProcess = proc;
+      }
     });
-  });
+  }
+
+  let getPulp = function (options) {
+    let pulp = 'pulp';
+    if (options.pulp) {
+      pulp = options.pulp;
+    }
+    return pulp;
+  };
+
+  let getCommands = function (options) {
+    let build = 'build'; // build or browserify
+    if (options.build) {
+      build = options.build;
+    }
+    let commands = [build];
+    ['build-path', 'dependency-path', 'include', 'main', 'modules', 'to', 'src-path', 'test-path', 'standalone'].forEach((key) => {
+      if (key in options) {
+        commands.push('--' + key);
+        commands.push(options[key]);
+      }
+    });
+    ['no-check-main', 'optimise', 'source-maps', 'skip-entry-point'].forEach((key) => {
+      if (key in options) {
+        if (options[key]) {
+          commands.push('--' + key)
+        }
+      }
+    });
+    return commands;
+  }
+
+
+
 };
 
 module.exports = PulpWebpackPlugin;
